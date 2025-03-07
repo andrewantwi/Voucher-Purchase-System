@@ -1,0 +1,50 @@
+# Byte-compiled / optimized files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Virtual environment
+.venv/
+env/
+venv/
+
+# Logs and local environment variables
+*.log
+*.env
+.env.*
+instance_config.json
+
+# IDE / Editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS-specific files
+.DS_Store
+Thumbs.db
+
+# Python dependencies
+pip-log.txt
+pip-wheel-metadata/
+dist/
+build/
+*.egg-info/
+
+# Database and caches
+*.db
+*.sqlite3
+*.pyo
+migrations/
+alembic/versions/
+
+# Docker files (if using Docker)
+docker-compose.override.yml
+__pypackages__/
+
+# Testing and coverage
+.nox/
+.coverage
+*.cover
+.hypothesis/
+pytest_cache/
