@@ -36,3 +36,9 @@ class VoucherOut(VoucherUpdate):
 class DeleteUsedVouchersResponse(BaseModel):
     message: str
     deleted: List[str] = []
+
+class UploadVouchersResponse(BaseModel):
+    message: str
+    uploaded_count: int
+    failed_count: int
+    failed_codes: list[str]

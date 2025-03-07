@@ -13,3 +13,7 @@ class PaymentConfirmation(BaseModel):
 
 class VoucherResponse(BaseModel):
     voucher_code: str
+
+class WebhookResponse(BaseModel):
+    status: str
+    message: str

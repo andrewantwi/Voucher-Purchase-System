@@ -1,6 +1,6 @@
 from typing import List
 
-from fastapi import Depends, APIRouter
+from fastapi import Depends, Request
 from loguru import logger
 import fastapi
 from requests import Session
@@ -8,7 +8,9 @@ from models.user import User
 from controller.auth import get_current_user
 from controller.voucher import VoucherController
 from models import get_db, Voucher
-from schemas.voucher import VoucherPurchase, VoucherOut, VoucherPurchaseResponse, VoucherUpdate, VoucherIn
+from schemas.payment import WebhookResponse
+from schemas.voucher import VoucherPurchase, VoucherOut, VoucherPurchaseResponse, VoucherUpdate, VoucherIn, \
+    DeleteUsedVouchersResponse
 
 voucher_router = fastapi.APIRouter(prefix="/voucher")
 
@@ -37,12 +39,22 @@ def complete_purchase(
     logger.info(f"Voucher purchase completed for {voucher.vouchername}")
     return result
 
+@voucher_router.post("/webhook", response_model=WebhookResponse)
+async def handle_paystack_webhook(request: Request, db: Session = Depends(get_db)):
+    """Handle Paystack webhook events"""
+    payload = await request.body()
+    signature = request.headers.get("x-paystack-signature")
+    response = voucher_controller.handle_webhook(db, payload, signature)
+    return response
+
+
 @voucher_router.delete("/used", response_model=DeleteUsedVouchersResponse)
 def delete_used_vouchers(
     user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
     """Delete all vouchers where is_used is True"""
+
     return voucher_controller.delete_used_vouchers(db, user)
 
 

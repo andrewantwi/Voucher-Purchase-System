@@ -1,9 +1,12 @@
+import hmac
+import hashlib
 from loguru import logger
-from fastapi import HTTPException, status
+from fastapi import HTTPException, status, UploadFile
 from sqlalchemy.exc import SQLAlchemyError
 
 from models.voucher import Voucher
-from schemas.voucher import VoucherIn, VoucherUpdate
+from schemas.payment import WebhookResponse
+from schemas.voucher import VoucherIn, VoucherUpdate, UploadVouchersResponse
 from utils.session import SessionManager as DBSession
 from fastapi.encoders import jsonable_encoder
 from passlib.context import CryptContext
@@ -14,6 +17,8 @@ from schemas.voucher import VoucherPurchase, VoucherOut
 from datetime import datetime
 import os
 from dotenv import load_dotenv
+import pandas as pd
+from io import BytesIO
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
@@ -81,7 +86,7 @@ class VoucherController:
     def complete_voucher_purchase(self, db: Session, reference: str, user: User) -> VoucherOut:
         logger.info(f"Completing voucher purchase for user {user.username}, reference: {reference}")
         payment_data = self.verify_payment(reference)
-        amount = payment_data["amount"] / 100  # Convert back from kobo
+        amount = payment_data["amount"] / 100  # Convert back from cedis
 
         voucher_code = f"VCHR-{user.id}-{int(datetime.now().timestamp())}"
         voucher = Voucher(code=voucher_code, amount=amount, user_id=user.id)
@@ -90,6 +95,121 @@ class VoucherController:
         db.refresh(voucher)
         logger.info(f"Voucher {voucher_code} created for user {user.username}, amount: {amount}")
         return VoucherOut.from_attributes(voucher)
+
+    @staticmethod
+    def handle_webhook(self, db: Session, payload: bytes, signature: str) -> WebhookResponse:
+        """Handle Paystack webhook events"""
+        # Verify signature
+        expected_signature = hmac.new(
+            self.PAYSTACK_SECRET_KEY.encode('utf-8'),
+            payload,
+            hashlib.sha512
+        ).hexdigest()
+
+        if not hmac.compare_digest(expected_signature, signature):
+            logger.warning("Invalid Paystack webhook signature")
+            raise HTTPException(status_code=400, detail="Invalid signature")
+
+        # Parse event
+        event = eval(payload.decode('utf-8'))  # Use json.loads in production
+        logger.info(f"Received Paystack webhook event: {event['event']}")
+
+        if event["event"] == "charge.success":
+            data = event["data"]
+            amount = data["amount"] / 100  # Convert from kobo to GHS
+            user_email = data["customer"]["email"]
+            reference = data["reference"]
+
+            # Find user
+            user = db.query(User).filter(User.email == user_email).first()
+            if not user:
+                logger.warning(f"User not found for email: {user_email}")
+                raise HTTPException(status_code=404, detail="User not found")
+
+            # Create voucher
+            voucher_code = f"VCHR-{user.id}-{int(datetime.now().timestamp())}"
+            voucher = Voucher(code=voucher_code, amount=amount, user_id=user.id)
+            db.add(voucher)
+            db.commit()
+            db.refresh(voucher)
+            logger.info(f"Voucher {voucher_code} created for user {user.username}, amount: {amount}")
+            return WebhookResponse(status="success", message="Payment verified and voucher created")
+
+        # Acknowledge other events
+        return WebhookResponse(status="success", message="Event received")
+
+    @staticmethod
+    def upload_vouchers(self, db: Session, file: UploadFile, user: User) -> UploadVouchersResponse:
+        """Upload and process a PDF file containing voucher codes from Rujie Cloud"""
+        logger.info(f"User {user.username} uploading voucher PDF file: {file.filename}")
+        if not user.is_admin:
+            logger.warning(f"Unauthorized attempt to upload vouchers by {user.username}")
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Admin access required")
+
+        if not file.filename.endswith('.pdf'):
+            logger.warning(f"Invalid file type uploaded: {file.filename}")
+            raise HTTPException(status_code=400, detail="Only PDF files (.pdf) are supported")
+
+        try:
+            contents = file.file.read()
+            uploaded_count = 0
+            failed_count = 0
+            failed_codes = []
+
+            with pdfplumber.open(BytesIO(contents)) as pdf:
+                all_text = ""
+                for page in pdf.pages:
+                    all_text += page.extract_text() or ""
+
+                # Extract codes between profile blocks and concurrent devices
+                # Pattern: 6-character alphanumeric codes (e.g., 23mawa, 246ckj)
+                code_pattern = r"(?<=Quota\s+2\s+GB\s+)([a-z0-9]{6})\s+(?=Concurrent\s+devices)"
+                codes = re.findall(code_pattern, all_text, re.MULTILINE)
+
+                if not codes:
+                    logger.warning("No voucher codes found in PDF")
+                    raise HTTPException(status_code=400, detail="No voucher codes found in PDF")
+
+                # Remove duplicates from the list
+                unique_codes = list(set(codes))
+                logger.info(f"Found {len(unique_codes)} unique voucher codes in PDF")
+
+                for code in unique_codes:
+                    try:
+                        if db.query(Voucher).filter(Voucher.code == code).first():
+                            logger.warning(f"Duplicate voucher code found: {code}")
+                            failed_codes.append(code)
+                            failed_count += 1
+                            continue
+
+                        # Map Quota 2 GB to amount=2.0, user_id defaults to uploader
+                        voucher = Voucher(
+                            code=code,
+                            amount=2.0,  # From Quota 2 GB
+                            user_id=user.id,
+                            is_used=False
+                        )
+                        db.add(voucher)
+                        uploaded_count += 1
+                    except Exception as e:
+                        logger.error(f"Failed to add voucher {code}: {str(e)}")
+                        failed_codes.append(code)
+                        failed_count += 1
+
+            db.commit()
+            logger.info(f"Uploaded {uploaded_count} vouchers, {failed_count} failed by {user.username}")
+            return UploadVouchersResponse(
+                message=f"Processed {uploaded_count + failed_count} vouchers",
+                uploaded_count=uploaded_count,
+                failed_count=failed_count,
+                failed_codes=failed_codes
+            )
+
+        except Exception as e:
+            logger.error(f"Error processing PDF file: {str(e)}")
+            raise HTTPException(status_code=400, detail=f"Failed to process PDF file: {str(e)}")
+        finally:
+            file.file.close()
 
     @staticmethod
     def get_vouchers():

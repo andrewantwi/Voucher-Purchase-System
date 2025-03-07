@@ -1,5 +1,4 @@
-from sqlalchemy import Column, Integer, String, Boolean, DateTime, ForeignKey, func
-
+from sqlalchemy import Column, Integer, String, Boolean, DateTime, ForeignKey, func, Float
 
 from core.setup import Base
 
@@ -8,6 +7,7 @@ class Voucher(Base):
     __tablename__ = "vouchers"
     id = Column(Integer, primary_key=True, index=True)
     code = Column(String, unique=True, index=True)
+    amount = Column(Float)
     value = Column(Integer)
     is_used = Column(Boolean, default=False)
 
@@ -16,5 +16,6 @@ class Voucher(Base):
             "id": self.id,
             "code": self.code,
             "value": self.value,
+            "amount": self.amount,
             "is_used": self.is_used,
         }
