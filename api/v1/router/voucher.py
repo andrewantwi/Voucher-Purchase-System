@@ -1,6 +1,6 @@
 from typing import List
 
-from fastapi import Depends, Request
+from fastapi import Depends, Request, UploadFile, File
 from loguru import logger
 import fastapi
 from requests import Session
@@ -10,7 +10,7 @@ from controller.voucher import VoucherController
 from models import get_db, Voucher
 from schemas.payment import WebhookResponse
 from schemas.voucher import VoucherPurchase, VoucherOut, VoucherPurchaseResponse, VoucherUpdate, VoucherIn, \
-    DeleteUsedVouchersResponse
+    DeleteUsedVouchersResponse, UploadVouchersResponse
 
 voucher_router = fastapi.APIRouter(prefix="/voucher")
 
@@ -23,10 +23,20 @@ def initiate_voucher_purchase(
     voucher: Voucher = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
-    logger.info(f"Voucher buy endpoint called by {voucher.vouchername} for amount: {purchase.amount}")
+    logger.info(f"Voucher buy endpoint called by for amount: {purchase.amount}")
     result = voucher_controller.buy_voucher(db, purchase, voucher)
-    logger.info(f"Voucher purchase initiated for {voucher.vouchername}")
+    logger.info(f"Voucher purchase initiated for"
+                f"")
     return result
+
+@voucher_router.post("/upload/{amount}", response_model=UploadVouchersResponse)
+def upload_vouchers(
+    file: UploadFile = File(...),
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Upload a PDF file containing voucher codes"""
+    return voucher_controller.upload_vouchers(db, file, user)
 
 @voucher_router.post("/complete/{reference}", response_model=VoucherOut)
 def complete_purchase(
@@ -34,9 +44,9 @@ def complete_purchase(
     voucher: Voucher = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
-    logger.info(f"Voucher completion endpoint called by {voucher.vouchername} with reference: {reference}")
+    logger.info(f"Voucher completion endpoint called by  with reference: {reference}")
     result = voucher_controller.complete_voucher_purchase(db, reference, voucher)
-    logger.info(f"Voucher purchase completed for {voucher.vouchername}")
+    logger.info(f"Voucher purchase completed for ")
     return result
 
 @voucher_router.post("/webhook", response_model=WebhookResponse)

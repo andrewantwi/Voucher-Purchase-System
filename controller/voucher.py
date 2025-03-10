@@ -1,5 +1,8 @@
 import hmac
 import hashlib
+import re
+
+import pdfplumber
 from loguru import logger
 from fastapi import HTTPException, status, UploadFile
 from sqlalchemy.exc import SQLAlchemyError
@@ -40,7 +43,7 @@ class VoucherController:
     def initialize_payment(self, amount: float, email: str) -> dict:
         logger.info(f"Initializing payment for amount: {amount}, email: {email}")
         data = {
-            "amount": int(amount * 100),  # Convert to kobo
+            "amount": int(amount * 100),  # Convert to cedis
             "email": email,
             "currency": "GHS"
         }
@@ -81,19 +84,33 @@ class VoucherController:
 
         payment_data = self.initialize_payment(purchase.amount, user.email)
         logger.info(f"Voucher purchase initiated for {user.username}, amount: {purchase.amount}")
-        return payment_data  # Return the full dict with url, access_code, status, and amount
+        return payment_data
 
     def complete_voucher_purchase(self, db: Session, reference: str, user: User) -> VoucherOut:
         logger.info(f"Completing voucher purchase for user {user.username}, reference: {reference}")
-        payment_data = self.verify_payment(reference)
-        amount = payment_data["amount"] / 100  # Convert back from cedis
 
-        voucher_code = f"VCHR-{user.id}-{int(datetime.now().timestamp())}"
-        voucher = Voucher(code=voucher_code, amount=amount, user_id=user.id)
-        db.add(voucher)
+        # Verify payment
+        payment_data = self.verify_payment(reference)
+        amount = payment_data["amount"] / 100  # Convert to cedis
+
+        # Query an unused voucher that matches the amount
+        voucher = db.query(Voucher).filter(
+            Voucher.amount == amount,
+            Voucher.is_used == False  # Ensure it's not used
+        ).first()  # Get the first available voucher
+
+        if not voucher:
+            logger.warning(f"No available voucher found for amount: {amount}")
+            raise HTTPException(status_code=404, detail="No available voucher found")
+
+        # Mark the voucher as used
+        voucher.is_used = True
         db.commit()
         db.refresh(voucher)
-        logger.info(f"Voucher {voucher_code} created for user {user.username}, amount: {amount}")
+
+        logger.info(f"Voucher {voucher.code} assigned to user {user.username}, amount: {amount}")
+
+        # Return the voucher details
         return VoucherOut.from_attributes(voucher)
 
     @staticmethod
@@ -126,20 +143,15 @@ class VoucherController:
                 logger.warning(f"User not found for email: {user_email}")
                 raise HTTPException(status_code=404, detail="User not found")
 
-            # Create voucher
-            voucher_code = f"VCHR-{user.id}-{int(datetime.now().timestamp())}"
-            voucher = Voucher(code=voucher_code, amount=amount, user_id=user.id)
-            db.add(voucher)
-            db.commit()
-            db.refresh(voucher)
-            logger.info(f"Voucher {voucher_code} created for user {user.username}, amount: {amount}")
+
+            logger.info(f"VoucherGHANA created for user {user.username}, amount: {amount}")
             return WebhookResponse(status="success", message="Payment verified and voucher created")
 
         # Acknowledge other events
         return WebhookResponse(status="success", message="Event received")
 
     @staticmethod
-    def upload_vouchers(self, db: Session, file: UploadFile, user: User) -> UploadVouchersResponse:
+    def upload_vouchers(self, db: Session, file: UploadFile, user: User,amount: float):
         """Upload and process a PDF file containing voucher codes from Rujie Cloud"""
         logger.info(f"User {user.username} uploading voucher PDF file: {file.filename}")
         if not user.is_admin:
@@ -162,7 +174,7 @@ class VoucherController:
                     all_text += page.extract_text() or ""
 
                 # Extract codes between profile blocks and concurrent devices
-                # Pattern: 6-character alphanumeric codes (e.g., 23mawa, 246ckj)
+                # Pattern: 6-character alphanumeric codes
                 code_pattern = r"(?<=Quota\s+2\s+GB\s+)([a-z0-9]{6})\s+(?=Concurrent\s+devices)"
                 codes = re.findall(code_pattern, all_text, re.MULTILINE)
 
@@ -185,7 +197,7 @@ class VoucherController:
                         # Map Quota 2 GB to amount=2.0, user_id defaults to uploader
                         voucher = Voucher(
                             code=code,
-                            amount=2.0,  # From Quota 2 GB
+                            amount=amount,  # From Quota 2 GB
                             user_id=user.id,
                             is_used=False
                         )
@@ -241,32 +253,45 @@ class VoucherController:
             logger.error(f"Controller: Error fetching voucher with ID {voucher_id}: {str(e)}")
             raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Error fetching voucher")
 
+
+
     @staticmethod
     def create_voucher(voucher: VoucherIn):
         try:
             with DBSession() as db:
-                hashed_password = pwd_context.hash(voucher.password)
+                # Check if the voucher code already exists
+                existing_voucher = db.query(Voucher).filter(Voucher.code == voucher.code).first()
+                if existing_voucher:
+                    raise HTTPException(status_code=400, detail="Voucher code already exists!")
 
-                # Create voucher dictionary with hashed password instead of plain text
+                # Convert Pydantic model to dictionary
                 voucher_data = voucher.model_dump()
-                voucher_data["hashed_password"] = hashed_password
-                del voucher_data["password"]  # Remove plain text password
 
+                # Create and save the voucher instance
                 voucher_instance = Voucher(**voucher_data)
                 logger.info(f"Controller: Creating voucher: {voucher_instance.to_dict()}")
+
                 db.add(voucher_instance)
                 db.commit()
                 db.refresh(voucher_instance)
-                logger.info(f"Controller: Voucher created with ID {voucher_instance.full_name}")
+
+                logger.info(f"Controller: Voucher created with code {voucher_instance.code}")
 
                 return voucher_instance.to_dict()
+
         except SQLAlchemyError as e:
-            logger.error(f"Controller: SQLAlchemy Error while creating voucher {voucher.full_name}: {str(e)}")
-            raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"Database error: {str(e)}")
+            logger.error(f"Controller: SQLAlchemy Error while creating voucher: {str(e)}")
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail=f"Database error: {str(e)}"
+            )
+
         except Exception as e:
             logger.error(f"Controller: Error creating voucher: {str(e)}")
-            raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                                detail=f"Error creating voucher: {str(e)}")
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail=f"Error creating voucher: {str(e)}"
+                )
 
     @staticmethod
     def update_voucher(voucher_id: int, update_data: VoucherUpdate):
@@ -323,6 +348,8 @@ class VoucherController:
                     status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                     detail="Error deleting voucher"
                 )
+
+
 
     @staticmethod
     def delete_used_vouchers(self, db: Session, user: User) -> dict:

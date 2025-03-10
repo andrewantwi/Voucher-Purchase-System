@@ -3,6 +3,7 @@ from typing import List
 from pydantic import BaseModel
 
 class VoucherUpdate(BaseModel):
+    amount: float
     code: str
     value: int
     is_used: bool
