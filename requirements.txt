@@ -29,3 +29,4 @@ passlib[bcrypt]
 bcrypt>=4.0.0
 pdfplumber~=0.11.5
 pandas~=2.2.3
+psycopg2-binary
