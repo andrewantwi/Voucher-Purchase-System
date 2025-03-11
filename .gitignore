@@ -36,7 +36,6 @@ build/
 *.sqlite3
 *.pyo
 migrations/
-alembic/versions/
 
 # Docker files (if using Docker)
 docker-compose.override.yml
