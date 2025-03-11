@@ -6,6 +6,7 @@ class VoucherUpdate(BaseModel):
     amount: float
     code: str
     value: int
+    validity_days = int
     is_used: bool
 
     class Config:
