@@ -9,6 +9,7 @@ class Voucher(Base):
     code = Column(String, unique=True, index=True)
     amount = Column(Float)
     value = Column(Integer)
+    validity_days = Column(Integer)
     is_used = Column(Boolean, default=False)
 
     def to_dict(self):
@@ -17,5 +18,6 @@ class Voucher(Base):
             "code": self.code,
             "value": self.value,
             "amount": self.amount,
+            "validity_days": self.validity_days,
             "is_used": self.is_used,
         }
