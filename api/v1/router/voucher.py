@@ -55,6 +55,7 @@ def complete_purchase(
 
 @voucher_router.post("/webhook", response_model=WebhookResponse)
 async def handle_paystack_webhook(request: Request, db: Session = Depends(get_db)):
+    logger.info("Webhook triggered")
     """Handle Paystack webhook events"""
     payload = await request.body()
     signature = request.headers.get("x-paystack-signature")
