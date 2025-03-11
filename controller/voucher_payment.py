@@ -168,7 +168,7 @@ class VoucherPaymentController:
         background_tasks = BackgroundTasks()
 
         if event["event"] == "charge.success":
-            background_tasks.add_task(VoucherController.process_charge_success, db, event)
+            background_tasks.add_task(VoucherPaymentController.process_charge_success, db, event)
 
         return WebhookResponse(status="success", message="Event received")
 
