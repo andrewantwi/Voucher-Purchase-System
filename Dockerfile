@@ -14,4 +14,4 @@ COPY . .
 
 EXPOSE 8000
 
-ENTRYPOINT [ "/bin/sh", "-c", "bash script/entrypoint.sh" ]
+ENTRYPOINT [ "/bin/sh", "-c", "bash script/startup.sh" ]
