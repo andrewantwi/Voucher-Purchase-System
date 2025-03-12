@@ -1,3 +1,4 @@
+from datetime import datetime
 import hashlib
 import hmac
 import json
@@ -144,7 +145,7 @@ class VoucherPaymentController:
             voucher.is_used = True
             voucher.user_id = user.id
             voucher.reference = reference
-            voucher.purchased_date = data["transaction_date"]
+            voucher.purchased_date = datetime.now()
             db.commit()
             db.refresh(voucher)
 
