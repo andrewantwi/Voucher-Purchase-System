@@ -59,7 +59,7 @@ async def handle_paystack_webhook(request: Request, db: Session = Depends(get_db
     """Handle Paystack webhook events"""
     payload = await request.body()
     signature = request.headers.get("x-paystack-signature")
-    response = voucher_payment_controller.handle_webhook(db, payload, signature)
+    response = await voucher_payment_controller.handle_webhook(db, payload, signature)
     return response
 
 @voucher_router.get("/active_voucher/{voucher_reference}", response_model=VoucherOut)
