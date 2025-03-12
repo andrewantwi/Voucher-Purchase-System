@@ -62,6 +62,12 @@ async def handle_paystack_webhook(request: Request, db: Session = Depends(get_db
     response = voucher_payment_controller.handle_webhook(db, payload, signature)
     return response
 
+@voucher_router.get("/active_voucher/{voucher_reference}", response_model=VoucherOut)
+async def get_voucher_by_reference(voucher_reference: str):
+    logger.info(f"Router: Getting Voucher with ID: {voucher_reference}")
+
+    return voucher_payment_controller.get_voucher_by_reference(voucher_reference)
+
 
 @voucher_router.delete("/used", response_model=DeleteUsedVouchersResponse)
 def delete_used_vouchers(
@@ -77,6 +83,12 @@ def delete_used_vouchers(
 async def get_vouchers():
     logger.info("Router: Getting all vouchers")
     vouchers=  voucher_crud_controller.get_vouchers()
+    return vouchers
+
+@voucher_router.get("/all_vouchers/{user_id}", response_model=List[VoucherOut])
+async def get_vouchers_by_user_id(user_id:int):
+    logger.info(f"Router: Getting all vouchers bought by user with id : {user_id}")
+    vouchers=  voucher_crud_controller.get_vouchers_by_user_id(user_id)
     return vouchers
 
 

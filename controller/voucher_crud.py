@@ -1,4 +1,5 @@
 from fastapi import HTTPException, status
+from fastapi.encoders import jsonable_encoder
 from loguru import logger
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
@@ -17,6 +18,19 @@ class VoucherCRUDController:
             with DBSession() as db:
                 logger.info("Controller: Fetching all vouchers")
                 vouchers = db.query(Voucher).all()
+                vouchers_list = [voucher.to_dict() for voucher in vouchers]
+                logger.info(f"Controller: Fetched Vouchers ==-> {vouchers_list}")
+                return vouchers_list
+        except Exception as e:
+            logger.error(f"Controller: Error fetching vouchers: {str(e)}")
+            raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Error fetching vouchers")
+
+    @staticmethod
+    def get_vouchers_by_user_id(user_id: int):
+        try:
+            with DBSession() as db:
+                logger.info("Controller: Fetching all vouchers by user ID")
+                vouchers = db.query(Voucher).filter(Voucher.user_id == user_id).all()
                 vouchers_list = [voucher.to_dict() for voucher in vouchers]
                 logger.info(f"Controller: Fetched Vouchers ==-> {vouchers_list}")
                 return vouchers_list

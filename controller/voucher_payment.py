@@ -2,14 +2,13 @@ import hashlib
 import hmac
 import json
 import os
-import re
-from io import BytesIO
-from typing import List
 
-import pdfplumber
+from fastapi.encoders import jsonable_encoder
+
+from utils.session import SessionManager as DBSession
 import requests
 from dotenv import load_dotenv
-from fastapi import HTTPException, status, UploadFile, BackgroundTasks
+from fastapi import HTTPException, status, BackgroundTasks
 from loguru import logger
 from passlib.context import CryptContext
 from sqlalchemy.orm import Session
@@ -17,7 +16,6 @@ from sqlalchemy.orm import Session
 from models.user import User
 from models.voucher import Voucher
 from schemas.payment import WebhookResponse
-from schemas.voucher import UploadVouchersResponse
 from schemas.voucher import VoucherPurchase, VoucherOut
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
@@ -139,9 +137,12 @@ class VoucherPaymentController:
             return
 
         voucher.is_used = True
+        voucher.user_id = user.id
+        voucher.reference = reference
+        voucher.purchased_date = data["transaction_date"]
         db.commit()
         db.refresh(voucher)
-        logger.info(f"VoucherGHANA created for user {user.username}, amount: {amount}")
+        logger.info(f"Voucher bought by user with username: {user.username} and amount: {amount}")
 
     @staticmethod
     def handle_webhook(db: Session, payload: bytes, signature: str) -> WebhookResponse:
@@ -173,4 +174,20 @@ class VoucherPaymentController:
 
         return WebhookResponse(status="success", message="Event received")
 
+    @staticmethod
+    def get_voucher_by_reference(voucher_reference: str):
 
+        try:
+            with DBSession() as db:
+                logger.info(f"Controller: Fetching voucher with reference: {voucher_reference}")
+                voucher = db.query(Voucher).filter(Voucher.reference == voucher_reference).first()
+                if not voucher:
+                    raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Voucher not found")
+                logger.info(f"Controller: Fetched Voucher ==-> {jsonable_encoder(voucher)}")
+                return voucher.to_dict()
+        except HTTPException as e:
+            logger.error(f"Controller: Voucher with reference: {voucher_reference} not found")
+            raise e
+        except Exception as e:
+            logger.error(f"Controller: Error fetching voucher with reference: {voucher_reference}: {str(e)}")
+            raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Error fetching voucher")
