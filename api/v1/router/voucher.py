@@ -1,5 +1,5 @@
 from typing import List
-from fastapi import Depends, Request, UploadFile, File, HTTPException
+from fastapi import Depends, Request, UploadFile, File
 from loguru import logger
 import fastapi
 from requests import Session
@@ -53,17 +53,12 @@ def complete_purchase(
     logger.info(f"Voucher purchase completed for ")
     return result
 
-@voucher_router.post("/voucher/webhook")
-async def handle_paystack_webhook(
-    request: Request, db: Session = Depends(get_db)
-):
-    """Handle Paystack Webhook"""
+@voucher_router.post("/webhook", response_model=WebhookResponse)
+async def handle_paystack_webhook(request: Request, db: Session = Depends(get_db)):
+    logger.info("Webhook triggered")
+    """Handle Paystack webhook events"""
     payload = await request.body()
-    signature = request.headers.get("X-Paystack-Signature")  # ✅ Extract the signature
-
-    if not signature:
-        raise HTTPException(status_code=400, detail="Missing Paystack signature")
-
+    signature = request.headers.get("x-paystack-signature")
     response = voucher_payment_controller.handle_webhook(db, payload, signature)
     return response
 
