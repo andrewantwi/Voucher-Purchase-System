@@ -1,3 +1,4 @@
+from datetime import datetime
 from typing import List
 
 from pydantic import BaseModel
@@ -29,8 +30,10 @@ class VoucherIn(VoucherUpdate):
     pass
 
 class VoucherOut(VoucherUpdate):
+    purchased_date : datetime
+    user_id : int
+    reference : str
     id: int
-    user_id: int
 
     class Config:
         from_attributes = True
