@@ -11,7 +11,7 @@ class Voucher(Base):
     value = Column(Integer)
     validity_days = Column(Integer)
     is_used = Column(Boolean, default=False)
-    purchased_date = Column(DateTime, default=func.now())
+    purchased_date = Column(DateTime,nullable=True)
     user_id = Column(Integer, ForeignKey("users.id"), nullable=True)
     reference = Column(String, unique=True, nullable=True)
 
