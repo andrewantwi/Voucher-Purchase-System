@@ -151,9 +151,10 @@ class VoucherPaymentController:
             logger.info(f"Voucher {voucher.code} assigned to user {user.username}, amount: {amount}")
 
     @staticmethod
-    def handle_webhook(db: Session, payload: bytes, signature: str) -> WebhookResponse:
+    async def handle_webhook(db: Session, payload: bytes, signature: str) -> WebhookResponse:
         """Handle Paystack webhook events"""
         # Verify signature
+        logger.info(f"handle Webhook triggered signature: {signature}")
         expected_signature = hmac.new(
             PAYSTACK_SECRET_KEY.encode('utf-8'),
             payload,
@@ -173,10 +174,9 @@ class VoucherPaymentController:
 
         logger.info(f"Received Paystack webhook event: {event['event']}")
 
-        background_tasks = BackgroundTasks()
 
         if event["event"] == "charge.success":
-            background_tasks.add_task(VoucherPaymentController.process_charge_success, db, event)
+            await VoucherPaymentController.process_charge_success(db, event)
 
         return WebhookResponse(status="success", message="Event received")
 
