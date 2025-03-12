@@ -117,37 +117,42 @@ class VoucherPaymentController:
     @staticmethod
     async def process_charge_success(db: Session, event: dict):
         """Handle charge.success event in the background"""
+        logger.info("Processing charge.success event")
         data = event["data"]
         amount = data["amount"] / 100
         user_email = data["customer"]["email"]
         reference = data["reference"]
+        logger.info(
+            f"Processing charge.success event details: amount: {amount} reference: {reference} email: {user_email}")
 
-        user = db.query(User).filter(User.email == user_email).first()
-        if not user:
-            logger.warning(f"User not found for email: {user_email}")
-            return
+        # Create a new DB session
+        with DBSession() as db:
+            user = db.query(User).filter(User.email == user_email).first()
+            if not user:
+                logger.warning(f"User not found for email: {user_email}")
+                return
 
-        voucher = db.query(Voucher).filter(
-            Voucher.amount == amount,
-            Voucher.is_used == False
-        ).first()
+            voucher = db.query(Voucher).filter(
+                Voucher.amount == amount,
+                Voucher.is_used == False
+            ).first()
 
-        if not voucher:
-            logger.warning(f"No available voucher found for amount: {amount}")
-            return
+            if not voucher:
+                logger.warning(f"No available voucher found for amount: {amount}")
+                return
 
-        voucher.is_used = True
-        voucher.user_id = user.id
-        voucher.reference = reference
-        voucher.purchased_date = data["transaction_date"]
-        db.commit()
-        db.refresh(voucher)
-        logger.info(f"Voucher bought by user with username: {user.username} and amount: {amount}")
+            voucher.is_used = True
+            voucher.user_id = user.id
+            voucher.reference = reference
+            voucher.purchased_date = data["transaction_date"]
+            db.commit()
+            db.refresh(voucher)
+
+            logger.info(f"Voucher {voucher.code} assigned to user {user.username}, amount: {amount}")
 
     @staticmethod
-    def handle_webhook(db: Session, payload: bytes, signature: str) -> WebhookResponse:
+    async def handle_webhook(self, db: Session, payload: bytes, signature: str):
         """Handle Paystack webhook events"""
-        # Verify signature
         expected_signature = hmac.new(
             PAYSTACK_SECRET_KEY.encode('utf-8'),
             payload,
@@ -158,7 +163,6 @@ class VoucherPaymentController:
             logger.warning("Invalid Paystack webhook signature")
             return WebhookResponse(status="success", message="Event received, invalid signature logged")
 
-        # Parse event
         try:
             event = json.loads(payload.decode('utf-8'))
         except json.JSONDecodeError:
@@ -167,10 +171,8 @@ class VoucherPaymentController:
 
         logger.info(f"Received Paystack webhook event: {event['event']}")
 
-        background_tasks = BackgroundTasks()
-
         if event["event"] == "charge.success":
-            background_tasks.add_task(VoucherPaymentController.process_charge_success, db, event)
+            await VoucherPaymentController.process_charge_success(db, event)
 
         return WebhookResponse(status="success", message="Event received")
 
