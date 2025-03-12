@@ -17,6 +17,7 @@ class VoucherUpdate(BaseModel):
 class VoucherPurchaseResponse(BaseModel):
     payment_url: str
     access_code: str
+    reference: str
     status: bool
     amount: float
 

@@ -59,12 +59,14 @@ class VoucherPaymentController:
         response_data = response.json()
         payment_url = response_data["data"]["authorization_url"]
         access_code = response_data["data"]["access_code"]
+        reference = response_data["data"]["reference"]
         payment_status = response_data["status"]
 
         logger.info(f"Payment initialized, URL: {payment_url}, Access Code: {access_code}, Status: {payment_status}")
         return {
             "payment_url": payment_url,
             "access_code": access_code,
+            "reference": reference,
             "status": payment_status,
             "amount": amount
         }
