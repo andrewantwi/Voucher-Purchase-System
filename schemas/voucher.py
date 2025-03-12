@@ -30,6 +30,7 @@ class VoucherIn(VoucherUpdate):
 
 class VoucherOut(VoucherUpdate):
     id: int
+    user_id: int
 
     class Config:
         from_attributes = True

@@ -109,6 +109,7 @@ class VoucherPaymentController:
 
         # Mark the voucher as used
         voucher.is_used = True
+        voucher.user_id = user.id
         db.commit()
         db.refresh(voucher)
 

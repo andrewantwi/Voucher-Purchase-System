@@ -11,6 +11,8 @@ class Voucher(Base):
     value = Column(Integer)
     validity_days = Column(Integer)
     is_used = Column(Boolean, default=False)
+    purchased_date = Column(DateTime, default=func.now())
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=True)
 
     def to_dict(self):
         return {
@@ -19,5 +21,7 @@ class Voucher(Base):
             "value": self.value,
             "amount": self.amount,
             "validity_days": self.validity_days,
+            "purchased_date": self.purchased_date,
+            "user_id": self.user_id,
             "is_used": self.is_used,
         }
