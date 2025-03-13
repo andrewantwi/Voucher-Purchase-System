@@ -45,11 +45,11 @@ async def upload_vouchers_endpoint(
 @voucher_router.post("/complete/{reference}", response_model=VoucherOut)
 def complete_purchase(
     reference: str,
-    voucher: Voucher = Depends(get_current_user),
+     user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
     logger.info(f"Voucher completion endpoint called by  with reference: {reference}")
-    result = voucher_payment_controller.complete_voucher_purchase(db, reference, voucher)
+    result = voucher_payment_controller.complete_voucher_purchase(db, reference, user)
     logger.info(f"Voucher purchase completed for ")
     return result
 
@@ -63,7 +63,7 @@ async def handle_paystack_webhook(request: Request, db: Session = Depends(get_db
     return response
 
 @voucher_router.get("/active_voucher/{voucher_reference}", response_model=VoucherOut)
-async def get_voucher_by_reference(voucher_reference: str):
+async def get_voucher_by_reference(voucher_reference: str,user: User = Depends(get_current_user)):
     logger.info(f"Router: Getting Voucher with ID: {voucher_reference}")
 
     return voucher_payment_controller.get_voucher_by_reference(voucher_reference)
@@ -80,35 +80,35 @@ def delete_used_vouchers(
 
 
 @voucher_router.get("", response_model=List[VoucherOut])
-async def get_vouchers():
+async def get_vouchers(user: User = Depends(get_current_user)):
     logger.info("Router: Getting all vouchers")
-    vouchers=  voucher_crud_controller.get_vouchers()
+    vouchers=  voucher_crud_controller.get_vouchers(user)
     return vouchers
 
-@voucher_router.get("/all_vouchers/{user_id}", response_model=List[VoucherOut])
-async def get_vouchers_by_user_id(user_id:int):
-    logger.info(f"Router: Getting all vouchers bought by user with id : {user_id}")
-    vouchers=  voucher_crud_controller.get_vouchers_by_user_id(user_id)
+@voucher_router.get("/all_vouchers", response_model=List[VoucherOut])
+async def get_vouchers_by_user_id(user: User = Depends(get_current_user)):
+    logger.info(f"Router: Getting all vouchers bought by user with id : {user.id}")
+    vouchers=  voucher_crud_controller.get_vouchers_by_user_id(user)
     return vouchers
 
 
 @voucher_router.get("/{voucher_id}", response_model=VoucherOut)
-async def get_voucher(voucher_id: int):
+async def get_voucher(voucher_id: int ,user: User = Depends(get_current_user)):
     logger.info(f"Router: Getting Voucher with ID: {voucher_id}")
 
     return voucher_crud_controller.get_voucher_by_id(voucher_id)
 
 
 @voucher_router.post("", response_model=VoucherOut)
-async def create_voucher(voucher: VoucherIn):
-    return voucher_crud_controller.create_voucher(voucher)
+async def create_voucher(voucher: VoucherIn, user: User = Depends(get_current_user)):
+    return voucher_crud_controller.create_voucher(voucher,user)
 
 
 @voucher_router.put("/{voucher_id}", response_model=VoucherOut)
-async def update_voucher(voucher_id: int, voucher: VoucherUpdate):
-    return voucher_crud_controller.update_voucher(voucher_id, voucher)
+async def update_voucher(voucher_id: int, voucher: VoucherUpdate, user: User = Depends(get_current_user)):
+    return voucher_crud_controller.update_voucher(voucher_id, voucher,user)
 
 
 @voucher_router.delete("/{voucher_id}")
-async def delete_voucher(voucher_id: int):
-    return voucher_crud_controller.delete_voucher(voucher_id)
+async def delete_voucher(voucher_id: int, user: User = Depends(get_current_user)):
+    return voucher_crud_controller.delete_voucher(voucher_id,user)

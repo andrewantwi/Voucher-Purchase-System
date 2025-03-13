@@ -47,6 +47,11 @@ class UserController:
     def create_user(user: UserIn):
         try:
             with DBSession() as db:
+                logger.info(f"Controller: Creating user: {user.full_name}")
+
+                existing_user = db.query(User).filter(User.email == user.email).first()
+                if existing_user:
+                    raise HTTPException(status_code=400, detail="User with this email already exists")
                 hashed_password = pwd_context.hash(user.password)
 
                 # Create user dictionary with hashed password instead of plain text

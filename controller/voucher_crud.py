@@ -13,7 +13,11 @@ from utils.session import SessionManager as DBSession
 class VoucherCRUDController:
 
     @staticmethod
-    def get_vouchers():
+    def get_vouchers( user: User):
+        logger.info(f"User {user.username} requested to get all vouchers")
+        if not user.is_admin:  # Restrict to admins
+            logger.warning(f"Unauthorized attempt to delete used vouchers by {user.username}")
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Admin access required")
         try:
             with DBSession() as db:
                 logger.info("Controller: Fetching all vouchers")
@@ -26,7 +30,9 @@ class VoucherCRUDController:
             raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Error fetching vouchers")
 
     @staticmethod
-    def get_vouchers_by_user_id(user_id: int):
+    def get_vouchers_by_user_id(user: User):
+        logger.info(f"User {user.username} requested to get vouchers used by user with ID {user.id}")
+        user_id = user.id
         try:
             with DBSession() as db:
                 logger.info("Controller: Fetching all vouchers by user ID")
@@ -40,7 +46,6 @@ class VoucherCRUDController:
 
     @staticmethod
     def get_voucher_by_id(voucher_id: int):
-
         try:
             with DBSession() as db:
                 logger.info(f"Controller: Fetching voucher with ID {voucher_id}")
@@ -58,7 +63,11 @@ class VoucherCRUDController:
 
 
     @staticmethod
-    def create_voucher(voucher: VoucherIn):
+    def create_voucher(voucher: VoucherIn, user: User):
+        logger.info(f"User {user.username} requested to create voucher")
+        if not user.is_admin:  # Restrict to admins
+            logger.warning(f"Unauthorized attempt to delete used vouchers by {user.username}")
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Admin access required")
         try:
             with DBSession() as db:
                 # Check if the voucher code already exists
@@ -96,7 +105,11 @@ class VoucherCRUDController:
             )
 
     @staticmethod
-    def update_voucher(voucher_id: int, update_data: VoucherUpdate):
+    def update_voucher(voucher_id: int, update_data: VoucherUpdate, user: User):
+        logger.info(f"User {user.username} requested to update voucher with ID {voucher_id}")
+        if not user.is_admin:  # Restrict to admins
+            logger.warning(f"Unauthorized attempt to delete used vouchers by {user.username}")
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Admin access required")
         try:
             with DBSession() as db:
                 logger.info(f"Controller: Updating voucher with ID {voucher_id}")
@@ -120,7 +133,12 @@ class VoucherCRUDController:
                                 detail=f"Error updating voucher: {str(e)}")
 
     @staticmethod
-    def delete_voucher(voucher_id: int):
+    def delete_voucher(voucher_id: int, user: User):
+
+        logger.info(f"User {user.username} requested deletion of used vouchers")
+        if not user.is_admin:  # Restrict to admins
+            logger.warning(f"Unauthorized attempt to delete used vouchers by {user.username}")
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Admin access required")
         with DBSession() as db:
             logger.info(f"Controller: Deleting voucher with ID {voucher_id}")
             voucher = db.query(Voucher).filter(Voucher.id == voucher_id).first()
