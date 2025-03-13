@@ -11,11 +11,17 @@ class UserUpdate(BaseModel):
     is_active: Optional[bool] = True
     is_admin: Optional[bool] = False
 
-class UserIn(UserUpdate):
+class UserIn(BaseModel):
+    full_name: str
+    username: str
+    email: EmailStr
     password: str
 
-class UserOut(UserUpdate):
+class UserOut(BaseModel):
     id: int
+    full_name: str
+    username: str
+    email: EmailStr
     created_at: datetime
 
     class Config:

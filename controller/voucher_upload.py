@@ -29,9 +29,9 @@ PAYSTACK_SECRET_KEY = os.getenv("PAYSTACK_SECRET_KEY")
 
 
 VOUCHER_TYPE_MAPPING = {
-    "10 5days": {"amount": 10.0, "validity_days": 5},
-    "20 10days": {"amount": 20.0, "validity_days": 10},
-    "50 30days": {"amount": 50.0, "validity_days": 30},
+    "3": {"amount": 10.0, "validity_days": 5},
+    "7": {"amount": 20.0, "validity_days": 10},
+    "20": {"amount": 50.0, "validity_days": 30},
 }
 
 
@@ -42,7 +42,7 @@ class VoucherUploadController:
         try:
             with pdfplumber.open(BytesIO(pdf_contents)) as pdf:
                 all_text = "".join(page.extract_text() or "" for page in pdf.pages)
-                code_pattern = r"(?<=Quota\s+2\s+GB\s+)([a-z0-9]{6})\s+(?=Concurrent\s+devices)"
+                code_pattern = r"\b[a-z0-9]{6}\b"
                 codes = re.findall(code_pattern, all_text, re.MULTILINE)
                 if not codes:
                     logger.warning("No voucher codes found in PDF")
@@ -69,7 +69,7 @@ class VoucherUploadController:
             user: User
     ):
         """Upload and process a PDF file containing voucher codes."""
-        logger.info(f"User {user.username} uploading voucher PDF file: {file.filename} with type: {voucher_type}")
+        logger.info(f"User {user.username} uploading voucher PDF file: {file.filename} with type: {voucher_type}gb")
 
         # Check admin access
         if not user.is_admin:

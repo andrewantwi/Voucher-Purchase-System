@@ -17,7 +17,6 @@ class User(Base):
     is_admin = Column(Boolean, default=False)
     created_at = Column(DateTime, default=func.now())
 
-
     def to_dict(self):
         return {
             "id": self.id,
