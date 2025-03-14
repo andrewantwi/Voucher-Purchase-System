@@ -27,7 +27,7 @@ async def get_user(user_id: int,current_user: User = Depends(get_current_user)):
 
 
 @user_router.post("", response_model=UserOut)
-async def create_user(user: UserIn,current_user: User = Depends(get_current_user)):
+async def create_user(user: UserIn):
     return UserController.create_user(user)
 
 
