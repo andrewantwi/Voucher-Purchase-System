@@ -31,7 +31,7 @@ class VoucherIn(VoucherUpdate):
     pass
 
 class VoucherOut(VoucherUpdate):
-    purchased_date : datetime
+    purchased_date : Optional[datetime] = None
     user_id: Optional[int] = None
     reference: Optional[str] = None
     id: int

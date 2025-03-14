@@ -29,9 +29,9 @@ PAYSTACK_SECRET_KEY = os.getenv("PAYSTACK_SECRET_KEY")
 
 
 VOUCHER_TYPE_MAPPING = {
-    "3": {"amount": 10.0, "validity_days": 5},
-    "7": {"amount": 20.0, "validity_days": 10},
-    "20": {"amount": 50.0, "validity_days": 30},
+    "3": {"value": 10, "amount": 2, "validity_days": 5},
+    "7": {"value": 20, "amount": 5, "validity_days": 10},
+    "20": {"value": 50, "amount": 10, "validity_days": 30},
 }
 
 
@@ -53,19 +53,19 @@ class VoucherUploadController:
             raise HTTPException(status_code=400, detail=f"Failed to process PDF: {str(e)}")
 
     @staticmethod
-    def _process_voucher_type(voucher_type: str) -> tuple[float, int]:
+    def _process_voucher_type(voucher_type: int) -> tuple[int, int, int]:
         """Map voucher_type to amount and validity_days."""
         if voucher_type not in VOUCHER_TYPE_MAPPING:
             raise HTTPException(status_code=400,
                                 detail=f"Invalid voucher_type. Supported types: {', '.join(VOUCHER_TYPE_MAPPING.keys())}")
         config = VOUCHER_TYPE_MAPPING[voucher_type]
-        return config["amount"], config["validity_days"]
+        return config["amount"], config["validity_days"], config["value"]
 
     @staticmethod
     def upload_vouchers(
             db: Session,
             file: UploadFile,
-            voucher_type: str,
+            voucher_type: int,
             user: User
     ):
         """Upload and process a PDF file containing voucher codes."""
@@ -82,7 +82,7 @@ class VoucherUploadController:
             raise HTTPException(status_code=400, detail="Only PDF files (.pdf) are supported")
 
         # Process voucher type
-        amount, validity_days = VoucherUploadController._process_voucher_type(voucher_type)
+        amount, validity_days, value = VoucherUploadController._process_voucher_type(voucher_type)
 
         try:
             # Read and extract codes
@@ -105,7 +105,8 @@ class VoucherUploadController:
                     voucher = Voucher(
                         code=code,
                         amount=amount,
-                        validity_days=validity_days,  # Store validity period
+                        validity_days=validity_days,
+                        value=value,
                         user_id=user.id,
                         is_used=False
                     )
