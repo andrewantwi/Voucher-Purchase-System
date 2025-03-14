@@ -97,6 +97,8 @@ class VoucherPaymentController:
         # Verify payment
         payment_data = self.verify_payment(reference)
         amount = payment_data["amount"] / 100  # Convert to cedis
+        user_email = payment_data["customer"]["email"]
+        reference = payment_data["reference"]
 
         # Query an unused voucher that matches the amount
         voucher = db.query(Voucher).filter(
@@ -108,9 +110,10 @@ class VoucherPaymentController:
             logger.warning(f"No available voucher found for amount: {amount}")
             raise HTTPException(status_code=404, detail="No available voucher found")
 
-        # Mark the voucher as used
         voucher.is_used = True
         voucher.user_id = user.id
+        voucher.reference = reference
+        voucher.purchased_date = datetime.now()
         db.commit()
         db.refresh(voucher)
 
