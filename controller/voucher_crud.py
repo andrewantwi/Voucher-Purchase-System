@@ -171,7 +171,7 @@ class VoucherCRUDController:
                 )
 
     @staticmethod
-    def delete_used_vouchers(self, db: Session, user: User) -> dict:
+    def delete_used_vouchers( db: Session, user: User) -> dict:
         """Delete all vouchers where is_used is True"""
         logger.info(f"User {user.username} requested deletion of used vouchers")
         if not user.is_admin:  # Restrict to admins
