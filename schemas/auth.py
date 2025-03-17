@@ -9,6 +9,7 @@ class Token(BaseModel):
     user_id: int
     access_token: str
     token_type: str
+    is_admin: bool
 
 class UserLogin(BaseModel):
     username: str

@@ -1,8 +1,6 @@
-from datetime import datetime
 from typing import Optional
 
 from pydantic import BaseModel, EmailStr
-
 
 class UserUpdate(BaseModel):
     full_name: str
@@ -19,5 +17,3 @@ class UserOut(UserUpdate):
 
     class Config:
         from_attributes = True
-
-

@@ -29,9 +29,9 @@ PAYSTACK_SECRET_KEY = os.getenv("PAYSTACK_SECRET_KEY")
 
 
 VOUCHER_TYPE_MAPPING = {
-    "3": {"value": 10, "amount": 2, "validity_days": 5},
-    "7": {"value": 20, "amount": 5, "validity_days": 10},
-    "20": {"value": 50, "amount": 10, "validity_days": 30},
+    "3": {"value": 3, "amount": 10, "validity_days": 5},
+    "7": {"value": 7, "amount": 20, "validity_days": 10},
+    "20": {"value": 20, "amount": 50, "validity_days": 30},
 }
 
 
@@ -71,7 +71,6 @@ class VoucherUploadController:
         """Upload and process a PDF file containing voucher codes."""
         logger.info(f"User {user.username} uploading voucher PDF file: {file.filename} with type: {voucher_type}gb")
 
-        # Check admin access
         if not user.is_admin:
             logger.warning(f"Unauthorized attempt to upload vouchers by {user.username}")
             raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Admin access required")
@@ -81,8 +80,12 @@ class VoucherUploadController:
             logger.warning(f"Invalid file type uploaded: {file.filename}")
             raise HTTPException(status_code=400, detail="Only PDF files (.pdf) are supported")
 
+
+
         # Process voucher type
         amount, validity_days, value = VoucherUploadController._process_voucher_type(voucher_type)
+
+        logger.info(f"User {user.username} uploading voucher PDF file: {file.filename} with type: {voucher_type}gb and amount: {amount}")
 
         try:
             # Read and extract codes

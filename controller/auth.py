@@ -30,7 +30,7 @@ def authenticate_user(username: str, password: str, db: Session):
         raise HTTPException(status_code=401, detail="Invalid credentials")
     access_token = jwt.encode({"sub": str(user.id)}, SECRET_KEY, algorithm=ALGORITHM)  # Use user.id
     logger.info(f"Access token generated for user: {user.username}")
-    return {"access_token": access_token,"user_id": user.id, "token_type": "bearer"}
+    return {"access_token": access_token,"user_id": user.id, "token_type": "bearer", "is_admin": user.is_admin }
 
 async def get_current_user(token: str = Depends(oauth2_scheme)):
     credentials_exception = HTTPException(
