@@ -21,3 +21,4 @@ A FastAPI-based RESTful API for purchasing vouchers with Paystack payment integr
 
 1. Clone the repository:
 ```bash
+git clone https://github.com/andrewantwi/Voucher-Purchase-System.git
