@@ -52,6 +52,11 @@ class VoucherUploadController:
             logger.error(f"Error extracting codes from PDF: {str(e)}")
             raise HTTPException(status_code=400, detail=f"Failed to process PDF: {str(e)}")
 
+
+
+
+
+
     @staticmethod
     def _process_voucher_type(voucher_type: int) -> tuple[int, int, int]:
         """Map voucher_type to amount and validity_days."""
@@ -60,6 +65,10 @@ class VoucherUploadController:
                                 detail=f"Invalid voucher_type. Supported types: {', '.join(VOUCHER_TYPE_MAPPING.keys())}")
         config = VOUCHER_TYPE_MAPPING[voucher_type]
         return config["amount"], config["validity_days"], config["value"]
+
+
+
+
 
     @staticmethod
     def upload_vouchers(
@@ -79,8 +88,6 @@ class VoucherUploadController:
         if not file.filename.endswith('.pdf'):
             logger.warning(f"Invalid file type uploaded: {file.filename}")
             raise HTTPException(status_code=400, detail="Only PDF files (.pdf) are supported")
-
-
 
         # Process voucher type
         amount, validity_days, value = VoucherUploadController._process_voucher_type(voucher_type)

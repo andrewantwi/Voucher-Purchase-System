@@ -1,8 +1,8 @@
-"""first
+"""empty message
 
-Revision ID: 2fa04afdebd0
+Revision ID: 4670ab5509dd
 Revises: 
-Create Date: 2025-03-11 16:14:49.887261
+Create Date: 2025-03-18 11:22:12.162442
 
 """
 from typing import Sequence, Union
@@ -12,7 +12,7 @@ import sqlalchemy as sa
 
 
 # revision identifiers, used by Alembic.
-revision: str = '2fa04afdebd0'
+revision: str = '4670ab5509dd'
 down_revision: Union[str, None] = None
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
@@ -40,7 +40,12 @@ def upgrade() -> None:
     sa.Column('value', sa.Integer(), nullable=True),
     sa.Column('validity_days', sa.Integer(), nullable=True),
     sa.Column('is_used', sa.Boolean(), nullable=True),
-    sa.PrimaryKeyConstraint('id')
+    sa.Column('purchased_date', sa.DateTime(), nullable=True),
+    sa.Column('user_id', sa.Integer(), nullable=True),
+    sa.Column('reference', sa.String(), nullable=True),
+    sa.ForeignKeyConstraint(['user_id'], ['users.id'], ),
+    sa.PrimaryKeyConstraint('id'),
+    sa.UniqueConstraint('reference')
     )
     op.create_index(op.f('ix_vouchers_code'), 'vouchers', ['code'], unique=True)
     op.create_index(op.f('ix_vouchers_id'), 'vouchers', ['id'], unique=False)
