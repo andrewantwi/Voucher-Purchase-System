@@ -1,38 +1,23 @@
-# Voucher Purchase System
+# Voucher Purchase API
 
-## Instructions
+A FastAPI-based RESTful API for purchasing vouchers with Paystack payment integration. The application allows users to register, login, and purchase vouchers of predefined amounts (2, 5, 10, 20, 50 cedis).
+
+## Features
+
+- User registration and authentication using JWT
+- Voucher purchase with Paystack payment gateway integration
+- PostgreSQL database with SQLAlchemy ORM
+- Structured architecture (routers, controllers, schemas, models)
+- Input validation using Pydantic
+- Protected endpoints with authentication
+
+## Prerequisites
+
+- Python 3.8+
+- PostgreSQL
+- Paystack account for payment integration
+
+## Installation
 
 1. Clone the repository:
-    ```sh
-    git clone <repository-url>
-    ```
-
-2. Change into the cloned repository directory:
-    ```sh
-    cd <repository-directory>
-    ```
-
-3. Create a virtual environment:
-    ```sh
-    python -m venv venv
-    ```
-
-4. Activate the virtual environment:
-    ```sh
-    source venv/bin/activate
-    ```
-
-5. Install the required packages:
-    ```sh
-    pip install -r requirements.txt
-    ```
-
-6. Migrate the database:
-    ```sh
-    alembic upgrade head
-    ```
-
-7. Run the application:
-    ```sh
-    uvicorn main:app
-    ```
+```bash
