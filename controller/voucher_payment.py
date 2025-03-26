@@ -43,13 +43,28 @@ class VoucherPaymentController:
             "Content-Type": "application/json"
         }
 
-    def initialize_payment(self, amount: float, email: str) -> dict:
-        logger.info(f"Initializing payment for amount: {amount}, email: {email}")
+    def initialize_payment(self,db: Session, amount: float, user: User) -> dict:
+        logger.info(f"Initializing payment for amount: {amount}, email: {user.email}")
         data = {
             "amount": int(amount * 100),  # Convert to cedis
-            "email": email,
+            "email": user.email,
             "currency": "GHS"
         }
+        # Query an unused voucher that matches the amount
+        voucher = db.query(Voucher).filter(
+            Voucher.amount == amount,
+            Voucher.is_used == False  # Ensure it's not used
+        ).first()
+
+
+        if not voucher:
+            logger.warning(f"No available voucher found for amount: {amount}")
+            raise HTTPException(status_code=404, detail="No available voucher found")
+
+        voucher.user_id = user.id
+        db.commit()
+        db.refresh(voucher)
+
         response = requests.post(f"{PAYSTACK_URL}/initialize",
                                  headers=self.headers, json=data)
         if response.status_code != 200:
@@ -87,7 +102,7 @@ class VoucherPaymentController:
             logger.warning(f"Invalid amount {purchase.amount} attempted by {user.username}")
             raise HTTPException(status_code=400, detail="Invalid voucher amount. Must be 2, 5, 10, 20, or 50")
 
-        payment_data = self.initialize_payment(purchase.amount, user.email)
+        payment_data = self.initialize_payment(purchase.amount, user)
         logger.info(f"Voucher purchase initiated for {user.username}, amount: {purchase.amount}")
         return payment_data
 
@@ -102,8 +117,8 @@ class VoucherPaymentController:
 
         # Query an unused voucher that matches the amount
         voucher = db.query(Voucher).filter(
-            Voucher.amount == amount,
-            Voucher.is_used == False  # Ensure it's not used
+            Voucher.user_id == user.id,
+            Voucher.is_used == False ,Voucher.amount == amount # Ensure it's not used
         ).first()
 
         if not voucher:
@@ -111,7 +126,6 @@ class VoucherPaymentController:
             raise HTTPException(status_code=404, detail="No available voucher found")
 
         voucher.is_used = True
-        voucher.user_id = user.id
         voucher.reference = reference
         voucher.purchased_date = datetime.now()
         db.commit()
@@ -138,10 +152,10 @@ class VoucherPaymentController:
                 logger.warning(f"User not found for email: {user_email}")
                 return
 
-            voucher = db.query(Voucher).filter(
-                Voucher.amount == amount,
-                Voucher.is_used == False
-            ).first()
+            vouchers = db.query(Voucher).filter(
+                Voucher.amount == amount
+            )
+            voucher = vouchers.filter(Voucher.is_used == False).first()
 
             if not voucher:
                 logger.warning(f"No available voucher found for amount: {amount}")

@@ -9,18 +9,17 @@ from passlib.context import CryptContext
 from jose import jwt, JWTError
 from dotenv import load_dotenv
 import os
-from utils.session import SessionManager as DBSession  # Assuming this is your session manager
+from utils.session import SessionManager as DBSession
 
 load_dotenv()
 SECRET_KEY = os.getenv("SECRET_KEY")
 ALGORITHM = "HS256"
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
-# OAuth2 scheme
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/v1/auth/token")
 
 class TokenData(BaseModel):
-    user_id: Optional[int] = None  # Optional[int] allows None or int
+    user_id: Optional[int] = None
 
 def authenticate_user(username: str, password: str, db: Session):
     logger.info(f"Authenticating user with email: {username}")
@@ -45,7 +44,7 @@ async def get_current_user(token: str = Depends(oauth2_scheme)):
         if user_id_str is None:
             logger.warning("Token missing 'sub' claim")
             raise credentials_exception
-        user_id = int(user_id_str)  # Convert to int
+        user_id = int(user_id_str)
         token_data = TokenData(user_id=user_id)
         logger.debug(f"Token decoded, user_id: {user_id}")
     except ValueError:
